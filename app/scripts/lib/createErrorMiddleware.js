@@ -33,17 +33,16 @@ const RPC_ERRORS = {
 }
 
 /**
- * Translates a JSON-RPC error object into a human-readable message,
+ * Modifies a JSON-RPC error object in-place to add a human-readable message,
  * optionally overriding any provider-supplied message
  *
  * @param {RpcError} error - JSON-RPC error object
  * @param {boolean} override - Use RPC_ERRORS message in place of provider message
- * @returns {string} Human-readable JSON-RPC error message
  */
-function translateErrorCode ({ code, message }, override) {
-  if (message && !override) { return message }
-  message = code > -31099 && code < -32100 ? RPC_ERRORS.internal : RPC_ERRORS[code]
-  return message || RPC_ERRORS.unknown
+function sanitizeRPCError (error, override) {
+  if (error.message && !override) { return error }
+  const message = error.code > -31099 && error.code < -32100 ? RPC_ERRORS.internal : RPC_ERRORS[error.code]
+  error.message = message || RPC_ERRORS.unknown
 }
 
 /**
@@ -58,7 +57,8 @@ function createErrorMiddleware ({ override = true } = {}) {
     next(done => {
       const { error } = res
       if (!error) { return done() }
-      log.error(`MetaMask - RPC Error: ${translateErrorCode(error, override)}`, error)
+      sanitizeRPCError(error)
+      log.error(`MetaMask - RPC Error: ${error.message}`, error)
     })
   }
 }
